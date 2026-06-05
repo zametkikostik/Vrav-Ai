@@ -60,6 +60,28 @@ def test_post_stream_invalid_json_returns_bad_request():
     thread.join(timeout=1)
 
 
+def test_json_admin_post_endpoints_reject_invalid_json():
+    VravHttpHandler.config.api_token = ""
+    server = ThreadingHTTPServer(("127.0.0.1", 0), VravHttpHandler)
+    thread = threading.Thread(target=_run, args=(server,), daemon=True)
+    thread.start()
+    time.sleep(0.02)
+
+    for path in ("/tools/register", "/restore"):
+        conn = HTTPConnection("127.0.0.1", server.server_port, timeout=2)
+        conn.request("POST", path, body="{bad", headers={"Content-Type": "application/json"})
+        response = conn.getresponse()
+        payload = json.loads(response.read().decode("utf-8"))
+
+        assert response.status == 400
+        assert payload["error"] == "invalid_json"
+        conn.close()
+
+    server.shutdown()
+    server.server_close()
+    thread.join(timeout=1)
+
+
 def test_stream_endpoint_returns_sse():
     server = ThreadingHTTPServer(("127.0.0.1", 0), VravHttpHandler)
     thread = threading.Thread(target=_run, args=(server,), daemon=True)
@@ -1147,6 +1169,10 @@ def test_schema_errors_endpoint_exposes_error_contract():
     assert payload["envelope"] == {"error": "<code>"}
     assert "unauthorized" in payload["common_codes"]
     assert payload["examples"]["not_found"]["status"] == 404
+    assert payload["examples"]["invalid_json"] == {
+        "status": 400,
+        "body": {"error": "invalid_json"},
+    }
 
     conn.close()
     server.shutdown()

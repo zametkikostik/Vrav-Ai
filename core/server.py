@@ -212,6 +212,7 @@ class VravHttpHandler(BaseHTTPRequestHandler):
                 "examples": {
                     "unauthorized": {"status": 401, "body": {"error": "unauthorized"}},
                     "not_found": {"status": 404, "body": {"error": "not_found"}},
+                    "invalid_json": {"status": 400, "body": {"error": "invalid_json"}},
                     "validation": {"status": 400, "body": {"error": "session_id_required"}},
                 },
             }, HTTPStatus.OK)
