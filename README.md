@@ -25,7 +25,7 @@
 - Snapshot/restore event log в JSON (`EventLog.snapshot(path)` / `EventLog.restore(path)`).
 - Built-in tools: `echo`, `upper`.
 - Валидация user input с отдельным `ValidationError` и error-event fallback.
-- HTTP интерфейс для интеграции: POST `/stream`, POST `/restore`, POST `/tools/register`, POST `/admin/reset`, DELETE `/tools/unregister`, DELETE `/sessions`, GET `/replay`, GET `/events`, GET `/tools`, GET `/sessions`, GET `/sessions/export`, GET `/sessions/count`, GET `/stats`, GET `/config`, GET `/diagnostics`, GET `/slo`, GET `/metrics`, GET `/readiness`, GET `/version`, GET `/build`, GET `/capabilities`, GET `/schema/events`, GET `/schema/events-query`, GET `/schema/tools`, GET `/schema/tools-admin`, GET `/schema/sessions`, GET `/schema/session-ops`, GET `/schema/system`, GET `/schema/runtime`, GET `/schema/http`, GET `/schema/auth`, GET `/schema/errors`, GET `/schema/rate-limit`, GET `/schema/snapshot`, GET `/schema/diagnostics`, GET `/schema/config`, GET `/schema/capabilities`, GET `/schema/readiness`, GET `/schema/slo`, GET `/schema/liveness`, GET `/schema/build`, GET `/schema/routes`, GET `/schema/openapi`, GET `/schema/stats`, GET `/schema/cli`, GET `/schema/index`, GET `/schema/discovery`, GET `/schema/version`, GET `/schema/health`, GET `/schema/status`, GET `/schema/stream`, GET `/schema/stream-request`, GET `/schema/replay`, GET `/schema/admin`, GET `/schema/admin-reset`, GET `/schema/metrics`, GET `/status`, GET `/whoami`, GET `/ping`, GET `/time`, GET `/routes`, GET `/openapi.json`, GET `/snapshot`.
+- HTTP интерфейс для интеграции: POST `/stream`, POST `/restore`, POST `/tools/register`, POST `/admin/reset`, DELETE `/tools/unregister`, DELETE `/sessions`, GET `/replay`, GET `/events`, GET `/tools`, GET `/sessions`, GET `/sessions/export`, GET `/sessions/count`, GET `/stats`, GET `/config`, GET `/diagnostics`, GET `/slo`, GET `/metrics`, GET `/readiness`, GET `/version`, GET `/build`, GET `/capabilities`, GET `/schema/events`, GET `/schema/events-query`, GET `/schema/tools`, GET `/schema/tools-admin`, GET `/schema/tools-list`, GET `/schema/sessions`, GET `/schema/session-ops`, GET `/schema/system`, GET `/schema/runtime`, GET `/schema/http`, GET `/schema/auth`, GET `/schema/errors`, GET `/schema/rate-limit`, GET `/schema/snapshot`, GET `/schema/diagnostics`, GET `/schema/config`, GET `/schema/capabilities`, GET `/schema/readiness`, GET `/schema/slo`, GET `/schema/liveness`, GET `/schema/build`, GET `/schema/routes`, GET `/schema/openapi`, GET `/schema/stats`, GET `/schema/cli`, GET `/schema/index`, GET `/schema/discovery`, GET `/schema/version`, GET `/schema/health`, GET `/schema/status`, GET `/schema/stream`, GET `/schema/stream-request`, GET `/schema/replay`, GET `/schema/admin`, GET `/schema/admin-reset`, GET `/schema/metrics`, GET `/status`, GET `/whoami`, GET `/ping`, GET `/time`, GET `/routes`, GET `/openapi.json`, GET `/snapshot`.
 - Опциональная авторизация по Bearer token через `VRAV_API_TOKEN`.
 - CLI интерфейс: `python -m core.cli chat --text ...`, `python -m core.cli replay --session ...`.
 
@@ -102,6 +102,8 @@ python -m core.cli chat --text "привет"
 - Контракт tool-протокола: `GET /schema/tools` (формат команды и tool events).
 
 - Контракт tool-admin API: `GET /schema/tools-admin` (register/unregister endpoints и поля payload/response).
+
+- Контракт списка tools: `GET /schema/tools-list` (`/tools` response fields, tool fields и default tools).
 
 - Контракт session API: `GET /schema/sessions` (overview/detail/count поля).
 

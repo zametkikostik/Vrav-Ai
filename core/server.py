@@ -135,6 +135,16 @@ class VravHttpHandler(BaseHTTPRequestHandler):
             }, HTTPStatus.OK)
             return
 
+        if parsed.path == "/schema/tools-list":
+            self._json_response({
+                "endpoint": "/tools",
+                "response_fields": ["tools"],
+                "tool_fields": ["name", "description"],
+                "default_tools": ["echo", "upper"],
+                "dynamic_tools": True,
+            }, HTTPStatus.OK)
+            return
+
         if parsed.path == "/schema/sessions":
             self._json_response({
                 "overview_fields": ["sessions", "count"],
@@ -338,6 +348,7 @@ class VravHttpHandler(BaseHTTPRequestHandler):
                     "/schema/events-query",
                     "/schema/tools",
                     "/schema/tools-admin",
+                    "/schema/tools-list",
                     "/schema/sessions",
                     "/schema/session-ops",
                     "/schema/system",
@@ -368,7 +379,7 @@ class VravHttpHandler(BaseHTTPRequestHandler):
                 "index": "/schema/index",
                 "families": {
                     "event": ["/schema/events", "/schema/events-query"],
-                    "tooling": ["/schema/tools", "/schema/tools-admin"],
+                    "tooling": ["/schema/tools", "/schema/tools-admin", "/schema/tools-list"],
                     "sessions": ["/schema/sessions", "/schema/session-ops"],
                     "system": ["/schema/system", "/schema/runtime", "/schema/http", "/schema/auth"],
                     "errors": ["/schema/errors"],
@@ -595,6 +606,7 @@ class VravHttpHandler(BaseHTTPRequestHandler):
                     "/schema/events-query": {"get": {}},
                     "/schema/tools": {"get": {}},
                     "/schema/tools-admin": {"get": {}},
+                    "/schema/tools-list": {"get": {}},
                     "/schema/sessions": {"get": {}},
                     "/schema/session-ops": {"get": {}},
                     "/schema/system": {"get": {}},
@@ -666,6 +678,7 @@ class VravHttpHandler(BaseHTTPRequestHandler):
                     "GET /schema/events-query",
                     "GET /schema/tools",
                     "GET /schema/tools-admin",
+                    "GET /schema/tools-list",
                     "GET /schema/sessions",
                     "GET /schema/session-ops",
                     "GET /schema/system",

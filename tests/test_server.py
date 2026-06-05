@@ -903,6 +903,31 @@ def test_schema_tools_admin_endpoint_exposes_tool_admin_contract():
     thread.join(timeout=1)
 
 
+def test_schema_tools_list_endpoint_exposes_tools_list_contract():
+    VravHttpHandler.config.api_token = ""
+    server = ThreadingHTTPServer(("127.0.0.1", 0), VravHttpHandler)
+    thread = threading.Thread(target=_run, args=(server,), daemon=True)
+    thread.start()
+    time.sleep(0.02)
+
+    conn = HTTPConnection("127.0.0.1", server.server_port, timeout=2)
+    conn.request("GET", "/schema/tools-list")
+    response = conn.getresponse()
+    payload = json.loads(response.read().decode("utf-8"))
+
+    assert response.status == 200
+    assert payload["endpoint"] == "/tools"
+    assert "tools" in payload["response_fields"]
+    assert "name" in payload["tool_fields"]
+    assert "echo" in payload["default_tools"]
+    assert payload["dynamic_tools"] is True
+
+    conn.close()
+    server.shutdown()
+    server.server_close()
+    thread.join(timeout=1)
+
+
 def test_schema_sessions_endpoint_exposes_session_contract():
     VravHttpHandler.config.api_token = ""
     server = ThreadingHTTPServer(("127.0.0.1", 0), VravHttpHandler)
