@@ -271,8 +271,17 @@ class VravHttpHandler(BaseHTTPRequestHandler):
         if parsed.path == "/schema/readiness":
             self._json_response({
                 "endpoint": "/readiness",
-                "fields": ["stage", "production_ready", "next_doc"],
+                "fields": [
+                    "stage",
+                    "production_ready",
+                    "readiness_score_pct",
+                    "remaining_to_initial_production_baseline",
+                    "remaining_to_enterprise_hardening",
+                    "blockers",
+                    "next_doc",
+                ],
                 "stage_values": ["prototype"],
+                "score_semantics": "0 means not started, 100 means production baseline satisfied",
                 "readiness_doc": "docs/PRODUCTION_READINESS.md",
             }, HTTPStatus.OK)
             return
@@ -570,6 +579,17 @@ class VravHttpHandler(BaseHTTPRequestHandler):
             self._json_response({
                 "stage": "prototype",
                 "production_ready": False,
+                "readiness_score_pct": 25,
+                "remaining_to_initial_production_baseline": "~6-10 weeks",
+                "remaining_to_enterprise_hardening": "~12-16 weeks",
+                "blockers": [
+                    "durable_storage",
+                    "distributed_rate_limiting",
+                    "hardened_authz",
+                    "observability_alerting",
+                    "secure_tool_sandbox",
+                    "deployment_runbooks",
+                ],
                 "next_doc": "docs/PRODUCTION_READINESS.md",
             }, HTTPStatus.OK)
             return

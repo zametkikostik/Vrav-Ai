@@ -3,6 +3,13 @@
 ## Current stage
 Prototype core runtime with in-memory persistence and local HTTP/CLI surfaces.
 
+## Readiness estimate
+
+- Current production-readiness score: **~25%** toward an initial production baseline.
+- Remaining to initial production baseline: **~6-10 weeks** with a focused team.
+- Remaining to hardened enterprise readiness: **~12-16 weeks** with security, reliability and operations hardening.
+- This estimate assumes the current prototype scope remains stable and durable storage, auth, observability and deployment work are prioritized next.
+
 ## Gaps to production
 
 1. Durable storage (PostgreSQL/Redis/Kafka) replacing in-memory EventLog/SessionStore.

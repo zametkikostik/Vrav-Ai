@@ -312,6 +312,9 @@ def test_readiness_endpoint_reports_prototype_stage():
     assert response.status == 200
     assert payload["production_ready"] is False
     assert payload["stage"] == "prototype"
+    assert payload["readiness_score_pct"] == 25
+    assert payload["remaining_to_initial_production_baseline"] == "~6-10 weeks"
+    assert "durable_storage" in payload["blockers"]
 
     conn.close()
     server.shutdown()
@@ -1312,7 +1315,10 @@ def test_schema_readiness_endpoint_exposes_readiness_contract():
     assert response.status == 200
     assert payload["endpoint"] == "/readiness"
     assert "production_ready" in payload["fields"]
+    assert "readiness_score_pct" in payload["fields"]
+    assert "blockers" in payload["fields"]
     assert "prototype" in payload["stage_values"]
+    assert payload["score_semantics"].startswith("0 means")
     assert payload["readiness_doc"] == "docs/PRODUCTION_READINESS.md"
 
     conn.close()

@@ -134,7 +134,7 @@ python -m core.cli chat --text "привет"
 
 - Контракт capabilities: `GET /schema/capabilities` (feature flags и тип значений для client discovery).
 
-- Контракт readiness: `GET /schema/readiness` (stage, production_ready и ссылка на production checklist).
+- Контракт readiness: `GET /schema/readiness` (stage, production_ready, readiness score, blockers и ссылка на production checklist).
 
 - Контракт SLO: `GET /schema/slo` (target fields и назначение pre-production targets).
 
