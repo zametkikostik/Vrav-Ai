@@ -106,3 +106,18 @@ def test_rate_limiter_error_is_persisted_for_replay():
     assert replay[-1].payload["error"] == "rate_limited"
     assert replay[-1].sequence_id == limited[0].sequence_id
 
+
+def test_eventlog_restore_invalid_snapshot_is_atomic(tmp_path):
+    engine = VravEngine()
+    list(engine.stream("atomic-restore", "hello"))
+    before = engine.event_log.session_count("atomic-restore")
+    bad_snapshot = tmp_path / "bad.json"
+    bad_snapshot.write_text("{bad", encoding="utf-8")
+
+    try:
+        engine.event_log.restore(str(bad_snapshot))
+    except ValueError:
+        pass
+
+    assert engine.event_log.session_count("atomic-restore") == before
+

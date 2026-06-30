@@ -209,12 +209,14 @@ class VravHttpHandler(BaseHTTPRequestHandler):
                     "name_required",
                     "invalid_json",
                     "invalid_query_param",
+                    "invalid_snapshot",
                 ],
                 "examples": {
                     "unauthorized": {"status": 401, "body": {"error": "unauthorized"}},
                     "not_found": {"status": 404, "body": {"error": "not_found"}},
                     "invalid_json": {"status": 400, "body": {"error": "invalid_json"}},
                     "invalid_query_param": {"status": 400, "body": {"error": "invalid_query_param", "field": "limit"}},
+                    "invalid_snapshot": {"status": 400, "body": {"error": "invalid_snapshot"}},
                     "validation": {"status": 400, "body": {"error": "session_id_required"}},
                 },
             }, HTTPStatus.OK)
@@ -845,7 +847,11 @@ class VravHttpHandler(BaseHTTPRequestHandler):
             if data is None:
                 return
             path = data.get("path", "/tmp/vrav_snapshot.json")
-            count = self.engine.event_log.restore(path)
+            try:
+                count = self.engine.event_log.restore(path)
+            except (OSError, ValueError, KeyError, TypeError):
+                self._json_response({"error": "invalid_snapshot", "path": path}, HTTPStatus.BAD_REQUEST)
+                return
             self._json_response({"restored": count, "path": path}, HTTPStatus.OK)
             return
 

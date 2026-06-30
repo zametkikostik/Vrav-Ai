@@ -36,7 +36,7 @@ class EventLog:
 
         raw = json.loads(source.read_text(encoding="utf-8"))
         total = 0
-        self._events = {}
+        restored_events: Dict[str, List[Envelope]] = {}
 
         for session_id, events in raw.items():
             restored: List[Envelope] = []
@@ -55,8 +55,9 @@ class EventLog:
                     )
                 )
                 total += 1
-            self._events[session_id] = restored
+            restored_events[session_id] = restored
 
+        self._events = restored_events
         return total
 
 

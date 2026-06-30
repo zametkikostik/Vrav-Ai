@@ -651,6 +651,31 @@ def test_sessions_export_endpoint_returns_events():
     thread.join(timeout=1)
 
 
+def test_restore_endpoint_rejects_invalid_snapshot_file(tmp_path):
+    VravHttpHandler.config.api_token = ""
+    server = ThreadingHTTPServer(("127.0.0.1", 0), VravHttpHandler)
+    thread = threading.Thread(target=_run, args=(server,), daemon=True)
+    thread.start()
+    time.sleep(0.02)
+
+    bad_snapshot = tmp_path / "bad_snapshot.json"
+    bad_snapshot.write_text("{bad", encoding="utf-8")
+
+    conn = HTTPConnection("127.0.0.1", server.server_port, timeout=2)
+    payload = json.dumps({"path": str(bad_snapshot)})
+    conn.request("POST", "/restore", body=payload, headers={"Content-Type": "application/json"})
+    response = conn.getresponse()
+    body = json.loads(response.read().decode("utf-8"))
+
+    assert response.status == 400
+    assert body == {"error": "invalid_snapshot", "path": str(bad_snapshot)}
+
+    conn.close()
+    server.shutdown()
+    server.server_close()
+    thread.join(timeout=1)
+
+
 def test_config_endpoint_returns_runtime_snapshot():
     VravHttpHandler.config.api_token = ""
     server = ThreadingHTTPServer(("127.0.0.1", 0), VravHttpHandler)
@@ -1221,6 +1246,10 @@ def test_schema_errors_endpoint_exposes_error_contract():
     assert payload["examples"]["invalid_query_param"] == {
         "status": 400,
         "body": {"error": "invalid_query_param", "field": "limit"},
+    }
+    assert payload["examples"]["invalid_snapshot"] == {
+        "status": 400,
+        "body": {"error": "invalid_snapshot"},
     }
 
     conn.close()

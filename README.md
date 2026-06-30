@@ -122,7 +122,7 @@ python -m core.cli chat --text "привет"
 
 - Контракт авторизации: `GET /schema/auth` (режимы auth, env var, required header).
 
-- Контракт ошибок API: `GET /schema/errors` (common error codes и примеры ответов, включая `invalid_json` и `invalid_query_param`).
+- Контракт ошибок API: `GET /schema/errors` (common error codes и примеры ответов, включая `invalid_json`, `invalid_query_param` и `invalid_snapshot`).
 
 - Контракт rate limiting: `GET /schema/rate-limit` (scope, config fields и error signal при превышении лимита).
 
