@@ -880,6 +880,48 @@ def test_schema_events_endpoint_exposes_contract():
     thread.join(timeout=1)
 
 
+def test_events_endpoint_rejects_invalid_query_params():
+    VravHttpHandler.config.api_token = ""
+    server = ThreadingHTTPServer(("127.0.0.1", 0), VravHttpHandler)
+    thread = threading.Thread(target=_run, args=(server,), daemon=True)
+    thread.start()
+    time.sleep(0.02)
+
+    conn = HTTPConnection("127.0.0.1", server.server_port, timeout=2)
+    conn.request("GET", "/events?session_id=bad-query&limit=abc")
+    response = conn.getresponse()
+    payload = json.loads(response.read().decode("utf-8"))
+
+    assert response.status == 400
+    assert payload == {"error": "invalid_query_param", "field": "limit"}
+
+    conn.close()
+    server.shutdown()
+    server.server_close()
+    thread.join(timeout=1)
+
+
+def test_replay_endpoint_rejects_invalid_from_sequence():
+    VravHttpHandler.config.api_token = ""
+    server = ThreadingHTTPServer(("127.0.0.1", 0), VravHttpHandler)
+    thread = threading.Thread(target=_run, args=(server,), daemon=True)
+    thread.start()
+    time.sleep(0.02)
+
+    conn = HTTPConnection("127.0.0.1", server.server_port, timeout=2)
+    conn.request("GET", "/replay?session_id=bad-query&from_sequence=0")
+    response = conn.getresponse()
+    payload = json.loads(response.read().decode("utf-8"))
+
+    assert response.status == 400
+    assert payload == {"error": "invalid_query_param", "field": "from_sequence"}
+
+    conn.close()
+    server.shutdown()
+    server.server_close()
+    thread.join(timeout=1)
+
+
 def test_schema_events_query_endpoint_exposes_events_query_contract():
     VravHttpHandler.config.api_token = ""
     server = ThreadingHTTPServer(("127.0.0.1", 0), VravHttpHandler)
@@ -1175,6 +1217,10 @@ def test_schema_errors_endpoint_exposes_error_contract():
     assert payload["examples"]["invalid_json"] == {
         "status": 400,
         "body": {"error": "invalid_json"},
+    }
+    assert payload["examples"]["invalid_query_param"] == {
+        "status": 400,
+        "body": {"error": "invalid_query_param", "field": "limit"},
     }
 
     conn.close()

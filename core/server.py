@@ -208,11 +208,13 @@ class VravHttpHandler(BaseHTTPRequestHandler):
                     "session_id_required",
                     "name_required",
                     "invalid_json",
+                    "invalid_query_param",
                 ],
                 "examples": {
                     "unauthorized": {"status": 401, "body": {"error": "unauthorized"}},
                     "not_found": {"status": 404, "body": {"error": "not_found"}},
                     "invalid_json": {"status": 400, "body": {"error": "invalid_json"}},
+                    "invalid_query_param": {"status": 400, "body": {"error": "invalid_query_param", "field": "limit"}},
                     "validation": {"status": 400, "body": {"error": "session_id_required"}},
                 },
             }, HTTPStatus.OK)
@@ -604,7 +606,9 @@ class VravHttpHandler(BaseHTTPRequestHandler):
         if parsed.path == "/replay":
             query = parse_qs(parsed.query)
             session_id = query.get("session_id", [""])[0]
-            from_seq = int(query.get("from_sequence", ["1"])[0])
+            from_seq = self._query_int(query, "from_sequence", default=1, minimum=1)
+            if from_seq is None:
+                return
             events = [event.payload for event in self.engine.replay(session_id, from_sequence=from_seq)]
             self._json_response({"events": events}, HTTPStatus.OK)
             return
@@ -760,8 +764,10 @@ class VravHttpHandler(BaseHTTPRequestHandler):
         if parsed.path == "/events":
             query = parse_qs(parsed.query)
             session_id = query.get("session_id", [""])[0]
-            from_seq = int(query.get("from_sequence", ["1"])[0])
-            limit = int(query.get("limit", ["100"])[0])
+            from_seq = self._query_int(query, "from_sequence", default=1, minimum=1)
+            limit = self._query_int(query, "limit", default=100, minimum=1)
+            if from_seq is None or limit is None:
+                return
             replayed = self.engine.replay(session_id, from_sequence=from_seq)
             events = [
                 {
@@ -776,6 +782,18 @@ class VravHttpHandler(BaseHTTPRequestHandler):
 
         self._json_response({"error": "not_found"}, HTTPStatus.NOT_FOUND)
 
+
+    def _query_int(self, query: dict[str, list[str]], field: str, default: int, minimum: int = 1) -> int | None:
+        raw = query.get(field, [str(default)])[0]
+        try:
+            value = int(raw)
+        except (TypeError, ValueError):
+            self._json_response({"error": "invalid_query_param", "field": field}, HTTPStatus.BAD_REQUEST)
+            return None
+        if value < minimum:
+            self._json_response({"error": "invalid_query_param", "field": field}, HTTPStatus.BAD_REQUEST)
+            return None
+        return value
 
     def _authorized(self) -> bool:
         if not self.config.auth_enabled():
