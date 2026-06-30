@@ -92,3 +92,17 @@ def test_rate_limiter_produces_error_after_limit():
     events = list(engine.stream("rl-1", "two"))
     assert events[0].event_type == EventType.ERROR
     assert events[0].payload["error"] == "rate_limited"
+
+
+def test_rate_limiter_error_is_persisted_for_replay():
+    engine = VravEngine()
+    engine.rate_limiter.max_requests = 1
+    list(engine.stream("rl-persist", "one"))
+    limited = list(engine.stream("rl-persist", "two"))
+
+    replay = engine.replay("rl-persist")
+
+    assert replay[-1].event_type == EventType.ERROR
+    assert replay[-1].payload["error"] == "rate_limited"
+    assert replay[-1].sequence_id == limited[0].sequence_id
+

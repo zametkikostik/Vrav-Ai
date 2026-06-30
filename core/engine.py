@@ -46,23 +46,23 @@ class VravEngine:
         state = self.sessions.get_or_create(session_id)
         user_message = Message(role=Role.USER, content=text)
 
-        if not self.rate_limiter.allow(session_id):
-            return [
-                Envelope(
-                    event_type=EventType.ERROR,
-                    session_id=session_id,
-                    source="core.engine",
-                    payload={"error": "rate_limited", "message_id": user_message.id},
-                    sequence_id=state.last_sequence + 1,
-                    correlation_id=user_message.id,
-                )
-            ]
-
-        envelopes: List[Envelope] = []
-
         def next_seq() -> int:
             state.last_sequence += 1
             return state.last_sequence
+
+        if not self.rate_limiter.allow(session_id):
+            error = Envelope(
+                event_type=EventType.ERROR,
+                session_id=session_id,
+                source="core.engine",
+                payload={"error": "rate_limited", "message_id": user_message.id},
+                sequence_id=next_seq(),
+                correlation_id=user_message.id,
+            )
+            self._emit(error)
+            return [error]
+
+        envelopes: List[Envelope] = []
 
         try:
             validate_user_message(user_message)
