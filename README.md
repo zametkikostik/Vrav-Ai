@@ -52,7 +52,7 @@ python -m core.cli chat --text "привет"
 
 - Production gap roadmap: `docs/PRODUCTION_READINESS.md`.
 
-- Настройка rate-limit через env: `VRAV_RATE_LIMIT_REQUESTS`, `VRAV_RATE_LIMIT_WINDOW_SEC`.
+- Настройка rate-limit через env: `VRAV_RATE_LIMIT_REQUESTS`, `VRAV_RATE_LIMIT_WINDOW_SEC` (невалидные или неположительные значения безопасно откатываются к defaults 50/60).
 
 - Самодокументирование API: `GET /routes` возвращает список поддерживаемых маршрутов.
 
