@@ -149,6 +149,27 @@ def test_snapshot_endpoint_works(tmp_path):
     thread.join(timeout=1)
 
 
+def test_snapshot_endpoint_rejects_unwritable_path(tmp_path):
+    VravHttpHandler.config.api_token = ""
+    server = ThreadingHTTPServer(("127.0.0.1", 0), VravHttpHandler)
+    thread = threading.Thread(target=_run, args=(server,), daemon=True)
+    thread.start()
+    time.sleep(0.02)
+
+    conn = HTTPConnection("127.0.0.1", server.server_port, timeout=2)
+    conn.request("GET", f"/snapshot?path={tmp_path}")
+    response = conn.getresponse()
+    payload = json.loads(response.read().decode("utf-8"))
+
+    assert response.status == 400
+    assert payload == {"error": "invalid_snapshot", "path": str(tmp_path)}
+
+    conn.close()
+    server.shutdown()
+    server.server_close()
+    thread.join(timeout=1)
+
+
 def test_auth_guard_blocks_without_token_when_enabled(monkeypatch):
     monkeypatch.setenv("VRAV_API_TOKEN", "secret")
     from core.server import VravHttpHandler as HandlerWithAuth

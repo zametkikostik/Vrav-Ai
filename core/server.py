@@ -601,7 +601,11 @@ class VravHttpHandler(BaseHTTPRequestHandler):
         if parsed.path == "/snapshot":
             query = parse_qs(parsed.query)
             path = query.get("path", ["/tmp/vrav_snapshot.json"])[0]
-            self.engine.event_log.snapshot(path)
+            try:
+                self.engine.event_log.snapshot(path)
+            except OSError:
+                self._json_response({"error": "invalid_snapshot", "path": path}, HTTPStatus.BAD_REQUEST)
+                return
             self._json_response({"saved": True, "path": path}, HTTPStatus.OK)
             return
 
