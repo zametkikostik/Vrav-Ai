@@ -48,6 +48,8 @@ python -m core.cli chat --text "привет"
 
 - Базовая защита от перегрузки: in-memory rate limiter по `session_id`.
 
+- Потокобезопасность внутри одного процесса: параллельные запросы сериализуют обработку сообщения и сохраняют монотонную последовательность событий сессии.
+
 - `GET /health` возвращает `status`, `service`, `uptime_seconds`.
 
 - Production gap roadmap: `docs/PRODUCTION_READINESS.md`.

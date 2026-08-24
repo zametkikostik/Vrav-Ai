@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from threading import RLock
 from typing import Iterable, List, Tuple
 
 from core.modules.agent.runtime import AgentRuntime
@@ -25,6 +26,7 @@ class VravEngine:
         self.tools = ToolRegistry()
         self.event_log = EventLog()
         self.rate_limiter = RateLimiter(max_requests=50, window_seconds=60)
+        self._state_lock = RLock()
         self._register_default_tools()
 
     def _register_default_tools(self) -> None:
@@ -43,6 +45,11 @@ class VravEngine:
         return tool_name.strip(), arg.strip()
 
     def ingest_user_message(self, session_id: str, text: str) -> List[Envelope]:
+        """Process one message atomically to preserve per-session ordering."""
+        with self._state_lock:
+            return self._ingest_user_message(session_id, text)
+
+    def _ingest_user_message(self, session_id: str, text: str) -> List[Envelope]:
         state = self.sessions.get_or_create(session_id)
         user_message = Message(role=Role.USER, content=text)
 
@@ -89,9 +96,9 @@ class VravEngine:
                         correlation_id=user_message.id,
                     )
                 )
-                if self.tools.has(tool_name):
+                try:
                     result = self.tools.call(tool_name, arg)
-                else:
+                except KeyError:
                     result = f"tool_not_found:{tool_name}"
 
                 tool_outputs.append(f"{tool_name}({arg}) => {result}")
@@ -153,44 +160,50 @@ class VravEngine:
         return buffer.dump()
 
     def replay(self, session_id: str, from_sequence: int = 1) -> List[Envelope]:
-        return self.event_log.replay(session_id=session_id, from_sequence=from_sequence)
+        with self._state_lock:
+            return self.event_log.replay(session_id=session_id, from_sequence=from_sequence)
 
 
     def stats(self) -> dict:
-        return {
-            "sessions": len(self.sessions.list_sessions()),
-            "tools": len(self.tools.list_tools()),
-            "subscribers": self.bus.stats(),
-        }
+        with self._state_lock:
+            return {
+                "sessions": len(self.sessions.list_sessions()),
+                "tools": len(self.tools.list_tools()),
+                "subscribers": self.bus.stats(),
+            }
 
 
     def reset_state(self) -> dict:
-        self.sessions = SessionStore()
-        self.event_log = EventLog()
-        self.rate_limiter = RateLimiter(
-            max_requests=self.rate_limiter.max_requests,
-            window_seconds=self.rate_limiter.window_seconds,
-        )
-        self.tools = ToolRegistry()
-        self._register_default_tools()
-        return {"reset": True}
+        with self._state_lock:
+            self.sessions = SessionStore()
+            self.event_log = EventLog()
+            self.rate_limiter = RateLimiter(
+                max_requests=self.rate_limiter.max_requests,
+                window_seconds=self.rate_limiter.window_seconds,
+            )
+            self.tools = ToolRegistry()
+            self._register_default_tools()
+            return {"reset": True}
 
 
     def session_overview(self) -> dict:
-        session_ids = self.sessions.list_sessions()
-        return {
-            "sessions": session_ids,
-            "count": len(session_ids),
-        }
+        with self._state_lock:
+            session_ids = self.sessions.list_sessions()
+            return {
+                "sessions": session_ids,
+                "count": len(session_ids),
+            }
 
 
     def remove_session(self, session_id: str) -> dict:
-        removed = self.sessions.delete(session_id)
-        return {"removed": removed, "session_id": session_id}
+        with self._state_lock:
+            removed = self.sessions.delete(session_id)
+            return {"removed": removed, "session_id": session_id}
 
 
     def session_detail(self, session_id: str) -> dict:
-        return self.sessions.detail(session_id)
+        with self._state_lock:
+            return self.sessions.detail(session_id)
 
 
     def export_session_events(self, session_id: str) -> list[dict]:
@@ -206,12 +219,14 @@ class VravEngine:
 
 
     def runtime_config_snapshot(self) -> dict:
-        return {
-            "rate_limit_requests": self.rate_limiter.max_requests,
-            "rate_limit_window_sec": self.rate_limiter.window_seconds,
-            "tools": self.tools.list_tools(),
-        }
+        with self._state_lock:
+            return {
+                "rate_limit_requests": self.rate_limiter.max_requests,
+                "rate_limit_window_sec": self.rate_limiter.window_seconds,
+                "tools": self.tools.list_tools(),
+            }
 
 
     def session_event_count(self, session_id: str) -> dict:
-        return {"session_id": session_id, "events": self.event_log.session_count(session_id)}
+        with self._state_lock:
+            return {"session_id": session_id, "events": self.event_log.session_count(session_id)}

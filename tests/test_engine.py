@@ -1,3 +1,5 @@
+from concurrent.futures import ThreadPoolExecutor
+
 from core.engine import VravEngine
 from core.modules.protocol.stream_protocol import StreamBuffer, StreamProtocol
 from core.modules.schemas.models import EventType
@@ -140,3 +142,15 @@ def test_tool_registry_rejects_invalid_tool_names():
     else:
         raise AssertionError("expected invalid_tool_name")
 
+
+
+def test_concurrent_streams_keep_session_sequence_monotonic():
+    engine = VravEngine()
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = [executor.submit(lambda: list(engine.stream("concurrent", "hello"))) for _ in range(8)]
+        for future in futures:
+            assert future.result()
+
+    sequences = [event.sequence_id for event in engine.replay("concurrent")]
+    assert sequences == list(range(1, len(sequences) + 1))

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from threading import RLock
 from typing import Callable, Dict, List
 
 
@@ -18,20 +19,26 @@ class ToolSpec:
 class ToolRegistry:
     def __init__(self) -> None:
         self._tools: Dict[str, ToolSpec] = {}
+        self._lock = RLock()
 
     def register(self, tool: ToolSpec) -> None:
         if not _TOOL_NAME_RE.fullmatch(tool.name):
             raise ValueError("invalid_tool_name")
-        self._tools[tool.name] = tool
+        with self._lock:
+            self._tools[tool.name] = tool
 
     def has(self, name: str) -> bool:
-        return name in self._tools
+        with self._lock:
+            return name in self._tools
 
     def call(self, name: str, arg: str) -> str:
-        return self._tools[name].fn(arg)
+        with self._lock:
+            tool = self._tools[name]
+        return tool.fn(arg)
 
     def list_tools(self) -> List[dict[str, str]]:
-        return [{"name": t.name, "description": t.description} for t in self._tools.values()]
+        with self._lock:
+            return [{"name": t.name, "description": t.description} for t in self._tools.values()]
 
 
     def register_lambda(self, name: str, description: str, fn: Callable[[str], str]) -> None:
@@ -39,7 +46,8 @@ class ToolRegistry:
 
 
     def unregister(self, name: str) -> bool:
-        if name not in self._tools:
-            return False
-        del self._tools[name]
-        return True
+        with self._lock:
+            if name not in self._tools:
+                return False
+            del self._tools[name]
+            return True

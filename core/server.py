@@ -132,7 +132,7 @@ class VravHttpHandler(BaseHTTPRequestHandler):
                 "register_payload_fields": ["name", "prefix"],
                 "name_pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$",
                 "register_response_fields": ["registered"],
-                "unregister_response_fields": ["ok", "removed"],
+                "unregister_response_fields": ["removed", "name"],
             }, HTTPStatus.OK)
             return
 

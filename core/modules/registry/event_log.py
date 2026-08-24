@@ -4,6 +4,7 @@ import json
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
+from threading import RLock
 from typing import Dict, List
 
 from core.modules.schemas.models import Envelope, EventType
@@ -14,19 +15,23 @@ class EventLog:
 
     def __init__(self) -> None:
         self._events: Dict[str, List[Envelope]] = {}
+        self._lock = RLock()
 
     def append(self, envelope: Envelope) -> Envelope:
-        self._events.setdefault(envelope.session_id, []).append(envelope)
-        return envelope
+        with self._lock:
+            self._events.setdefault(envelope.session_id, []).append(envelope)
+            return envelope
 
     def replay(self, session_id: str, from_sequence: int = 1) -> List[Envelope]:
-        return [e for e in self._events.get(session_id, []) if e.sequence_id >= from_sequence]
+        with self._lock:
+            return [e for e in self._events.get(session_id, []) if e.sequence_id >= from_sequence]
 
     def snapshot(self, path: str) -> None:
-        data = {
-            session_id: [asdict(event) for event in events]
-            for session_id, events in self._events.items()
-        }
+        with self._lock:
+            data = {
+                session_id: [asdict(event) for event in events]
+                for session_id, events in self._events.items()
+            }
         Path(path).write_text(json.dumps(data, default=str, ensure_ascii=False, indent=2), encoding="utf-8")
 
     def restore(self, path: str) -> int:
@@ -57,9 +62,10 @@ class EventLog:
                 total += 1
             restored_events[session_id] = restored
 
-        self._events = restored_events
+        with self._lock:
+            self._events = restored_events
         return total
 
-
     def session_count(self, session_id: str) -> int:
-        return len(self._events.get(session_id, []))
+        with self._lock:
+            return len(self._events.get(session_id, []))

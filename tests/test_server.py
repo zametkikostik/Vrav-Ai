@@ -1076,6 +1076,7 @@ def test_schema_tools_admin_endpoint_exposes_tool_admin_contract():
     assert payload["register_payload_fields"] == ["name", "prefix"]
     assert payload["name_pattern"].startswith("^[A-Za-z]")
     assert payload["register_response_fields"] == ["registered"]
+    assert payload["unregister_response_fields"] == ["removed", "name"]
 
     conn.close()
     server.shutdown()
