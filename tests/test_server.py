@@ -60,6 +60,27 @@ def test_post_stream_invalid_json_returns_bad_request():
     thread.join(timeout=1)
 
 
+def test_post_stream_rejects_non_json_content_type():
+    VravHttpHandler.config.api_token = ""
+    server = ThreadingHTTPServer(("127.0.0.1", 0), VravHttpHandler)
+    thread = threading.Thread(target=_run, args=(server,), daemon=True)
+    thread.start()
+    time.sleep(0.02)
+
+    conn = HTTPConnection("127.0.0.1", server.server_port, timeout=2)
+    conn.request("POST", "/stream", body='{"session_id":"mime","text":"hello"}', headers={"Content-Type": "text/plain"})
+    response = conn.getresponse()
+    payload = json.loads(response.read().decode("utf-8"))
+
+    assert response.status == 415
+    assert payload == {"error": "unsupported_media_type"}
+
+    conn.close()
+    server.shutdown()
+    server.server_close()
+    thread.join(timeout=1)
+
+
 def test_post_stream_rejects_invalid_content_length():
     VravHttpHandler.config.api_token = ""
     server = ThreadingHTTPServer(("127.0.0.1", 0), VravHttpHandler)
@@ -1365,6 +1386,7 @@ def test_schema_errors_endpoint_exposes_error_contract():
     }
     assert payload["examples"]["invalid_content_length"]["status"] == 400
     assert payload["examples"]["request_too_large"]["status"] == 413
+    assert payload["examples"]["unsupported_media_type"]["status"] == 415
     assert payload["examples"]["invalid_query_param"] == {
         "status": 400,
         "body": {"error": "invalid_query_param", "field": "limit"},

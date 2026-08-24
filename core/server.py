@@ -190,6 +190,7 @@ class VravHttpHandler(BaseHTTPRequestHandler):
                 "auth_header": "Authorization: Bearer <token>",
                 "stream_content_type": "text/event-stream; charset=utf-8",
                 "json_content_type": "application/json",
+                "required_json_request_content_type": "application/json",
                 "max_json_body_bytes": self.MAX_JSON_BODY_BYTES,
             }, HTTPStatus.OK)
             return
@@ -215,6 +216,7 @@ class VravHttpHandler(BaseHTTPRequestHandler):
                     "invalid_json",
                     "invalid_content_length",
                     "request_too_large",
+                    "unsupported_media_type",
                     "invalid_query_param",
                     "invalid_snapshot",
                 ],
@@ -225,6 +227,7 @@ class VravHttpHandler(BaseHTTPRequestHandler):
                     "invalid_json": {"status": 400, "body": {"error": "invalid_json"}},
                     "invalid_content_length": {"status": 400, "body": {"error": "invalid_content_length"}},
                     "request_too_large": {"status": 413, "body": {"error": "request_too_large"}},
+                    "unsupported_media_type": {"status": 415, "body": {"error": "unsupported_media_type"}},
                     "invalid_query_param": {"status": 400, "body": {"error": "invalid_query_param", "field": "limit"}},
                     "invalid_snapshot": {"status": 400, "body": {"error": "invalid_snapshot"}},
                     "validation": {"status": 400, "body": {"error": "session_id_required"}},
@@ -820,6 +823,11 @@ class VravHttpHandler(BaseHTTPRequestHandler):
         return token == f"Bearer {self.config.api_token}"
 
     def _read_json_body(self) -> dict | None:
+        media_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+        if media_type != "application/json":
+            self._json_response({"error": "unsupported_media_type"}, HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
+            return None
+
         raw_length = self.headers.get("Content-Length", "0")
         try:
             length = int(raw_length)
