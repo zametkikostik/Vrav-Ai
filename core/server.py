@@ -129,8 +129,9 @@ class VravHttpHandler(BaseHTTPRequestHandler):
             self._json_response({
                 "register_endpoint": "/tools/register",
                 "unregister_endpoint": "/tools/unregister?name=<tool>",
-                "register_payload_fields": ["name", "description", "response"],
-                "register_response_fields": ["ok", "tool"],
+                "register_payload_fields": ["name", "prefix"],
+                "name_pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$",
+                "register_response_fields": ["registered"],
                 "unregister_response_fields": ["ok", "removed"],
             }, HTTPStatus.OK)
             return
@@ -207,6 +208,7 @@ class VravHttpHandler(BaseHTTPRequestHandler):
                     "not_found",
                     "session_id_required",
                     "name_required",
+                    "invalid_tool_name",
                     "invalid_json",
                     "invalid_query_param",
                     "invalid_snapshot",
@@ -214,6 +216,7 @@ class VravHttpHandler(BaseHTTPRequestHandler):
                 "examples": {
                     "unauthorized": {"status": 401, "body": {"error": "unauthorized"}},
                     "not_found": {"status": 404, "body": {"error": "not_found"}},
+                    "invalid_tool_name": {"status": 400, "body": {"error": "invalid_tool_name"}},
                     "invalid_json": {"status": 400, "body": {"error": "invalid_json"}},
                     "invalid_query_param": {"status": 400, "body": {"error": "invalid_query_param", "field": "limit"}},
                     "invalid_snapshot": {"status": 400, "body": {"error": "invalid_snapshot"}},
@@ -834,17 +837,21 @@ class VravHttpHandler(BaseHTTPRequestHandler):
             data = self._read_json_body()
             if data is None:
                 return
-            name = data.get("name", "")
-            prefix = data.get("prefix", "")
+            name = str(data.get("name", "")).strip()
+            prefix = str(data.get("prefix", ""))
             if not name:
                 self._json_response({"error": "name_required"}, HTTPStatus.BAD_REQUEST)
                 return
 
-            self.engine.tools.register_lambda(
-                name=name,
-                description=f"Dynamic prefix tool for {name}",
-                fn=lambda arg, p=prefix: f"{p}{arg}",
-            )
+            try:
+                self.engine.tools.register_lambda(
+                    name=name,
+                    description=f"Dynamic prefix tool for {name}",
+                    fn=lambda arg, p=prefix: f"{p}{arg}",
+                )
+            except ValueError as exc:
+                self._json_response({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
+                return
             self._json_response({"registered": name}, HTTPStatus.OK)
             return
 

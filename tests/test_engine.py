@@ -129,3 +129,14 @@ def test_non_string_message_generates_validation_error_event():
     assert events[-1].event_type == EventType.ERROR
     assert events[-1].payload["error"] == "message_must_be_string"
 
+
+def test_tool_registry_rejects_invalid_tool_names():
+    engine = VravEngine()
+
+    try:
+        engine.tools.register_lambda("bad name", "invalid", lambda arg: arg)
+    except ValueError as exc:
+        assert str(exc) == "invalid_tool_name"
+    else:
+        raise AssertionError("expected invalid_tool_name")
+

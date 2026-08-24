@@ -313,6 +313,28 @@ def test_events_endpoint_returns_envelopes():
     thread.join(timeout=1)
 
 
+def test_register_tool_rejects_invalid_name():
+    VravHttpHandler.config.api_token = ""
+    server = ThreadingHTTPServer(("127.0.0.1", 0), VravHttpHandler)
+    thread = threading.Thread(target=_run, args=(server,), daemon=True)
+    thread.start()
+    time.sleep(0.02)
+
+    conn = HTTPConnection("127.0.0.1", server.server_port, timeout=2)
+    payload = json.dumps({"name": "bad name", "prefix": "x:"})
+    conn.request("POST", "/tools/register", body=payload, headers={"Content-Type": "application/json"})
+    response = conn.getresponse()
+    body = json.loads(response.read().decode("utf-8"))
+
+    assert response.status == 400
+    assert body == {"error": "invalid_tool_name"}
+
+    conn.close()
+    server.shutdown()
+    server.server_close()
+    thread.join(timeout=1)
+
+
 def test_unregister_tool_endpoint():
     VravHttpHandler.config.api_token = ""
     server = ThreadingHTTPServer(("127.0.0.1", 0), VravHttpHandler)
@@ -1051,7 +1073,9 @@ def test_schema_tools_admin_endpoint_exposes_tool_admin_contract():
     assert response.status == 200
     assert payload["register_endpoint"] == "/tools/register"
     assert payload["unregister_endpoint"].startswith("/tools/unregister")
-    assert "name" in payload["register_payload_fields"]
+    assert payload["register_payload_fields"] == ["name", "prefix"]
+    assert payload["name_pattern"].startswith("^[A-Za-z]")
+    assert payload["register_response_fields"] == ["registered"]
 
     conn.close()
     server.shutdown()
@@ -1282,6 +1306,10 @@ def test_schema_errors_endpoint_exposes_error_contract():
     assert payload["envelope"] == {"error": "<code>"}
     assert "unauthorized" in payload["common_codes"]
     assert payload["examples"]["not_found"]["status"] == 404
+    assert payload["examples"]["invalid_tool_name"] == {
+        "status": 400,
+        "body": {"error": "invalid_tool_name"},
+    }
     assert payload["examples"]["invalid_json"] == {
         "status": 400,
         "body": {"error": "invalid_json"},

@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Callable, Dict, List
+
+
+_TOOL_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
 
 
 @dataclass(slots=True)
@@ -16,6 +20,8 @@ class ToolRegistry:
         self._tools: Dict[str, ToolSpec] = {}
 
     def register(self, tool: ToolSpec) -> None:
+        if not _TOOL_NAME_RE.fullmatch(tool.name):
+            raise ValueError("invalid_tool_name")
         self._tools[tool.name] = tool
 
     def has(self, name: str) -> bool:
