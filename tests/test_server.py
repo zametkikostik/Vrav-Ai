@@ -60,6 +60,54 @@ def test_post_stream_invalid_json_returns_bad_request():
     thread.join(timeout=1)
 
 
+def test_post_stream_rejects_invalid_content_length():
+    VravHttpHandler.config.api_token = ""
+    server = ThreadingHTTPServer(("127.0.0.1", 0), VravHttpHandler)
+    thread = threading.Thread(target=_run, args=(server,), daemon=True)
+    thread.start()
+    time.sleep(0.02)
+
+    conn = HTTPConnection("127.0.0.1", server.server_port, timeout=2)
+    conn.putrequest("POST", "/stream")
+    conn.putheader("Content-Type", "application/json")
+    conn.putheader("Content-Length", "not-a-number")
+    conn.endheaders()
+    response = conn.getresponse()
+    payload = json.loads(response.read().decode("utf-8"))
+
+    assert response.status == 400
+    assert payload == {"error": "invalid_content_length"}
+
+    conn.close()
+    server.shutdown()
+    server.server_close()
+    thread.join(timeout=1)
+
+
+def test_post_stream_rejects_oversized_body_before_reading():
+    VravHttpHandler.config.api_token = ""
+    server = ThreadingHTTPServer(("127.0.0.1", 0), VravHttpHandler)
+    thread = threading.Thread(target=_run, args=(server,), daemon=True)
+    thread.start()
+    time.sleep(0.02)
+
+    conn = HTTPConnection("127.0.0.1", server.server_port, timeout=2)
+    conn.putrequest("POST", "/stream")
+    conn.putheader("Content-Type", "application/json")
+    conn.putheader("Content-Length", str(VravHttpHandler.MAX_JSON_BODY_BYTES + 1))
+    conn.endheaders()
+    response = conn.getresponse()
+    payload = json.loads(response.read().decode("utf-8"))
+
+    assert response.status == 413
+    assert payload == {"error": "request_too_large"}
+
+    conn.close()
+    server.shutdown()
+    server.server_close()
+    thread.join(timeout=1)
+
+
 def test_json_admin_post_endpoints_reject_invalid_json():
     VravHttpHandler.config.api_token = ""
     server = ThreadingHTTPServer(("127.0.0.1", 0), VravHttpHandler)
@@ -1315,6 +1363,8 @@ def test_schema_errors_endpoint_exposes_error_contract():
         "status": 400,
         "body": {"error": "invalid_json"},
     }
+    assert payload["examples"]["invalid_content_length"]["status"] == 400
+    assert payload["examples"]["request_too_large"]["status"] == 413
     assert payload["examples"]["invalid_query_param"] == {
         "status": 400,
         "body": {"error": "invalid_query_param", "field": "limit"},

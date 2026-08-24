@@ -14,6 +14,8 @@ from core.version import APP_NAME, APP_VERSION
 
 
 class VravHttpHandler(BaseHTTPRequestHandler):
+    MAX_JSON_BODY_BYTES = 1_048_576
+
     config = VravConfig.from_env()
     engine = VravEngine()
     started_at = time.time()
@@ -188,6 +190,7 @@ class VravHttpHandler(BaseHTTPRequestHandler):
                 "auth_header": "Authorization: Bearer <token>",
                 "stream_content_type": "text/event-stream; charset=utf-8",
                 "json_content_type": "application/json",
+                "max_json_body_bytes": self.MAX_JSON_BODY_BYTES,
             }, HTTPStatus.OK)
             return
 
@@ -210,6 +213,8 @@ class VravHttpHandler(BaseHTTPRequestHandler):
                     "name_required",
                     "invalid_tool_name",
                     "invalid_json",
+                    "invalid_content_length",
+                    "request_too_large",
                     "invalid_query_param",
                     "invalid_snapshot",
                 ],
@@ -218,6 +223,8 @@ class VravHttpHandler(BaseHTTPRequestHandler):
                     "not_found": {"status": 404, "body": {"error": "not_found"}},
                     "invalid_tool_name": {"status": 400, "body": {"error": "invalid_tool_name"}},
                     "invalid_json": {"status": 400, "body": {"error": "invalid_json"}},
+                    "invalid_content_length": {"status": 400, "body": {"error": "invalid_content_length"}},
+                    "request_too_large": {"status": 413, "body": {"error": "request_too_large"}},
                     "invalid_query_param": {"status": 400, "body": {"error": "invalid_query_param", "field": "limit"}},
                     "invalid_snapshot": {"status": 400, "body": {"error": "invalid_snapshot"}},
                     "validation": {"status": 400, "body": {"error": "session_id_required"}},
@@ -813,11 +820,24 @@ class VravHttpHandler(BaseHTTPRequestHandler):
         return token == f"Bearer {self.config.api_token}"
 
     def _read_json_body(self) -> dict | None:
-        length = int(self.headers.get("Content-Length", "0"))
+        raw_length = self.headers.get("Content-Length", "0")
+        try:
+            length = int(raw_length)
+        except (TypeError, ValueError):
+            self._json_response({"error": "invalid_content_length"}, HTTPStatus.BAD_REQUEST)
+            return None
+
+        if length < 0:
+            self._json_response({"error": "invalid_content_length"}, HTTPStatus.BAD_REQUEST)
+            return None
+        if length > self.MAX_JSON_BODY_BYTES:
+            self._json_response({"error": "request_too_large"}, HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
+            return None
+
         body = self.rfile.read(length)
         try:
             data = json.loads(body.decode("utf-8"))
-        except json.JSONDecodeError:
+        except (UnicodeDecodeError, json.JSONDecodeError):
             self._json_response({"error": "invalid_json"}, HTTPStatus.BAD_REQUEST)
             return None
         return data if isinstance(data, dict) else {}
