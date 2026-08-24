@@ -453,6 +453,8 @@ class VravHttpHandler(BaseHTTPRequestHandler):
             self._json_response({
                 "endpoint": "POST /stream",
                 "request_fields": ["session_id", "text"],
+                "field_types": {"session_id": "string", "text": "string"},
+                "validation_errors": ["empty_message", "message_too_large", "message_must_be_string"],
                 "default_session_id": "default",
                 "response_content_type": "text/event-stream; charset=utf-8",
                 "response_headers": ["Cache-Control", "X-Request-ID"],

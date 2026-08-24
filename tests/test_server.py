@@ -105,6 +105,28 @@ def test_stream_endpoint_returns_sse():
     thread.join(timeout=1)
 
 
+def test_stream_endpoint_reports_non_string_text_validation_error():
+    VravHttpHandler.config.api_token = ""
+    server = ThreadingHTTPServer(("127.0.0.1", 0), VravHttpHandler)
+    thread = threading.Thread(target=_run, args=(server,), daemon=True)
+    thread.start()
+    time.sleep(0.02)
+
+    conn = HTTPConnection("127.0.0.1", server.server_port, timeout=2)
+    payload = json.dumps({"session_id": "bad-text", "text": 123})
+    conn.request("POST", "/stream", body=payload, headers={"Content-Type": "application/json"})
+    response = conn.getresponse()
+    body = response.read().decode("utf-8")
+
+    assert response.status == 200
+    assert "message_must_be_string" in body
+
+    conn.close()
+    server.shutdown()
+    server.server_close()
+    thread.join(timeout=1)
+
+
 def test_tools_endpoint_works():
     server = ThreadingHTTPServer(("127.0.0.1", 0), VravHttpHandler)
     thread = threading.Thread(target=_run, args=(server,), daemon=True)
@@ -1648,6 +1670,8 @@ def test_schema_stream_request_endpoint_exposes_stream_request_contract():
     assert response.status == 200
     assert payload["endpoint"] == "POST /stream"
     assert "session_id" in payload["request_fields"]
+    assert payload["field_types"]["text"] == "string"
+    assert "message_must_be_string" in payload["validation_errors"]
     assert payload["default_session_id"] == "default"
     assert "X-Request-ID" in payload["response_headers"]
 

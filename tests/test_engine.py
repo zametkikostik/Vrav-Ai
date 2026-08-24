@@ -121,3 +121,11 @@ def test_eventlog_restore_invalid_snapshot_is_atomic(tmp_path):
 
     assert engine.event_log.session_count("atomic-restore") == before
 
+
+def test_non_string_message_generates_validation_error_event():
+    engine = VravEngine()
+    events = list(engine.stream("s-non-string", 123))  # type: ignore[arg-type]
+
+    assert events[-1].event_type == EventType.ERROR
+    assert events[-1].payload["error"] == "message_must_be_string"
+
