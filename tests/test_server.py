@@ -60,6 +60,29 @@ def test_post_stream_invalid_json_returns_bad_request():
     thread.join(timeout=1)
 
 
+def test_stream_endpoint_rejects_invalid_session_id():
+    VravHttpHandler.config.api_token = ""
+    server = ThreadingHTTPServer(("127.0.0.1", 0), VravHttpHandler)
+    thread = threading.Thread(target=_run, args=(server,), daemon=True)
+    thread.start()
+    time.sleep(0.02)
+
+    for session_id in ("   ", 42, "x" * 129):
+        conn = HTTPConnection("127.0.0.1", server.server_port, timeout=2)
+        body = json.dumps({"session_id": session_id, "text": "hello"})
+        conn.request("POST", "/stream", body=body, headers={"Content-Type": "application/json"})
+        response = conn.getresponse()
+        payload = json.loads(response.read().decode("utf-8"))
+
+        assert response.status == 400
+        assert payload == {"error": "invalid_session_id"}
+        conn.close()
+
+    server.shutdown()
+    server.server_close()
+    thread.join(timeout=1)
+
+
 def test_post_stream_rejects_non_json_content_type():
     VravHttpHandler.config.api_token = ""
     server = ThreadingHTTPServer(("127.0.0.1", 0), VravHttpHandler)
@@ -1380,6 +1403,7 @@ def test_schema_errors_endpoint_exposes_error_contract():
         "status": 400,
         "body": {"error": "invalid_tool_name"},
     }
+    assert payload["examples"]["invalid_session_id"]["status"] == 400
     assert payload["examples"]["invalid_json"] == {
         "status": 400,
         "body": {"error": "invalid_json"},
@@ -1773,6 +1797,8 @@ def test_schema_stream_request_endpoint_exposes_stream_request_contract():
     assert "session_id" in payload["request_fields"]
     assert payload["field_types"]["text"] == "string"
     assert "message_must_be_string" in payload["validation_errors"]
+    assert "invalid_session_id" in payload["validation_errors"]
+    assert payload["session_id_constraints"]["max_length"] == 128
     assert payload["default_session_id"] == "default"
     assert "X-Request-ID" in payload["response_headers"]
 

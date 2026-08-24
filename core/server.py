@@ -213,6 +213,7 @@ class VravHttpHandler(BaseHTTPRequestHandler):
                     "session_id_required",
                     "name_required",
                     "invalid_tool_name",
+                    "invalid_session_id",
                     "invalid_json",
                     "invalid_content_length",
                     "request_too_large",
@@ -224,6 +225,7 @@ class VravHttpHandler(BaseHTTPRequestHandler):
                     "unauthorized": {"status": 401, "body": {"error": "unauthorized"}},
                     "not_found": {"status": 404, "body": {"error": "not_found"}},
                     "invalid_tool_name": {"status": 400, "body": {"error": "invalid_tool_name"}},
+                    "invalid_session_id": {"status": 400, "body": {"error": "invalid_session_id"}},
                     "invalid_json": {"status": 400, "body": {"error": "invalid_json"}},
                     "invalid_content_length": {"status": 400, "body": {"error": "invalid_content_length"}},
                     "request_too_large": {"status": 413, "body": {"error": "request_too_large"}},
@@ -467,7 +469,8 @@ class VravHttpHandler(BaseHTTPRequestHandler):
                 "endpoint": "POST /stream",
                 "request_fields": ["session_id", "text"],
                 "field_types": {"session_id": "string", "text": "string"},
-                "validation_errors": ["empty_message", "message_too_large", "message_must_be_string"],
+                "validation_errors": ["empty_message", "message_too_large", "message_must_be_string", "invalid_session_id"],
+                "session_id_constraints": {"min_length": 1, "max_length": 128, "trimmed": True},
                 "default_session_id": "default",
                 "response_content_type": "text/event-stream; charset=utf-8",
                 "response_headers": ["Cache-Control", "X-Request-ID"],
@@ -904,7 +907,10 @@ class VravHttpHandler(BaseHTTPRequestHandler):
         if data is None:
             return
 
-        session_id = data.get("session_id", "default")
+        session_id = self._stream_session_id(data)
+        if session_id is None:
+            self._json_response({"error": "invalid_session_id"}, HTTPStatus.BAD_REQUEST)
+            return
         text = data.get("text", "")
 
         self.send_response(HTTPStatus.OK)
@@ -915,6 +921,16 @@ class VravHttpHandler(BaseHTTPRequestHandler):
 
         for envelope in self.engine.stream(session_id=session_id, text=text):
             self.wfile.write(StreamProtocol.encode(envelope))
+
+    @staticmethod
+    def _stream_session_id(data: dict) -> str | None:
+        raw_session_id = data.get("session_id", "default")
+        if not isinstance(raw_session_id, str):
+            return None
+        session_id = raw_session_id.strip()
+        if not session_id or len(session_id) > 128:
+            return None
+        return session_id
 
     def _text_response(self, payload: str, status: HTTPStatus) -> None:
         body = payload.encode("utf-8")
