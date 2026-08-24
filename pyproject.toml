@@ -1,0 +1,12 @@
+[project]
+name = "vrav-ai"
+version = "0.1.0"
+description = "Sovereign VRAV AI core monorepo"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[project.scripts]
+vrav = "core.cli:main"
